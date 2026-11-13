@@ -7,8 +7,8 @@ from maxapi.types import MessageCreated, MessageCallback, InputMedia, BotStarted
 from maxapi.utils.inline_keyboard import InlineKeyboardBuilder
 from maxapi.types.attachments.buttons import CallbackButton
 
+# Токен из переменной окружения
 bot = Bot(token=os.getenv("MAX_TOKEN"))
-#bot = Bot(token="f9LHodD0cOImesTPXx55j74ZEmekxW66Y8xo0DZ4NSyNxvaNuZgpBb9Ng_ttcZskPuJ3HhxahHmHD8rH6uEf")
 dp = Dispatcher()
 
 user_states = {}
@@ -63,11 +63,9 @@ def make_question_keyboard():
     )
     return keyboard.as_markup()
 
+# Кнопка возврата больше не нужна, но оставим функцию пустой на всякий случай
 def make_return_keyboard():
     keyboard = InlineKeyboardBuilder()
-    # Первый ряд: одна кнопка на всю ширину
-    keyboard.row(CallbackButton(text="Вернуться к вопросу", payload="return_quest"))
-    # Второй ряд: две кнопки рядом
     keyboard.row(
         CallbackButton(text="Пропустить", payload="skip_quest"),
         CallbackButton(text="Завершить", payload="finish_quest")
@@ -129,7 +127,6 @@ async def on_bot_started(event: BotStarted):
         "Пожалуйста, сначала напиши сюда любое сообщение (например, своё имя или просто «Привет»), чтобы запустить бота. "
         "После этого мы сможем начать."
     )
-    # Отправляем текст без кнопки
     await event.bot.send_message(
         chat_id=event.chat_id,
         text=welcome_text
@@ -156,21 +153,16 @@ async def hello_handler(event: MessageCreated):
                 break
                 
         if is_correct:
-            if not state.get("answered_wrong", False):
-                state["score"] += 1
-                await event.message.answer(text=f"✅ Верно! У вас {ballov(state['score'])}.")
-            else:
-                await event.message.answer(text=f"✅ Верно, но баллы не начислены (вы уже ошибались). У вас {ballov(state['score'])}.")
-            
-            state["step"] += 1
-            state["answered_wrong"] = False
-            await send_question(event, user_id)
+            state["score"] += 1
+            await event.message.answer(text=f"✅ Верно! У вас {ballov(state['score'])}.")
         else:
-            state["answered_wrong"] = True
-            await event.message.answer(
-                text=f"❌ Неверно.\nУ вас {ballov(state['score'])}.\n\n{q['hint']}",
-                attachments=[make_return_keyboard()]
-            )
+            await event.message.answer(text=f"❌ Неверно. У вас {ballov(state['score'])}.")
+        
+        # В любом случае показываем пояснение и идем дальше
+        await event.message.answer(text=q['hint'])
+        
+        state["step"] += 1
+        await send_question(event, user_id)
         return
 
     welcome_text = (
@@ -183,7 +175,6 @@ async def hello_handler(event: MessageCreated):
 
 @dp.message_callback()
 async def callback_handler(event: MessageCallback):
-    # Берем ID напрямую из события нажатия кнопки
     chat_id, user_id = event.get_ids()
     
     print(f"[ТЕСТ] Нажата кнопка. Payload: {event.callback.payload}. User ID: {user_id}")
@@ -191,32 +182,25 @@ async def callback_handler(event: MessageCallback):
     payload = event.callback.payload
 
     if payload == "start_quest":
-        user_states[user_id] = {"step": 0, "score": 0, "answered_wrong": False}
-        #await event.answer(new_text="Поехали! Вопрос 1.")
+        user_states[user_id] = {"step": 0, "score": 0}
         await send_question(event, user_id)
 
     elif payload == "finish_quest":
         await event.answer(new_text="Тест завершен.")
         await finish_quest_async(event, user_id)
 
-    elif payload == "return_quest":
-        state = user_states.get(user_id)
-        if state:
-            await event.answer(new_text="Вопрос заново:")
-            await send_question(event, user_id)
-        else:
-            await event.answer(new_text="Сначала напишите боту любое сообщение, чтобы начать тест.")
-
     elif payload == "skip_quest":
         state = user_states.get(user_id)
         if state:
+            # При пропуске показываем пояснение, чтобы было честно
+            q = QUESTIONS[state["step"]]
+            await event.answer(new_text="Вопрос пропущен.")
+            await event.message.answer(text=q['hint'])
+            
             state["step"] += 1
-            state["answered_wrong"] = False
             if state["step"] >= len(QUESTIONS):
-                await event.answer(new_text="Вопрос пропущен. Это был последний вопрос.")
                 await finish_quest_async(event, user_id)
             else:
-                await event.answer(new_text="Вопрос пропущен.")
                 await send_question(event, user_id)
 
 async def main():
