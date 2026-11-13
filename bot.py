@@ -1,5 +1,6 @@
 import asyncio
 import re
+import os
 import xml.etree.ElementTree as ET
 from maxapi import Bot, Dispatcher
 from maxapi.types import MessageCreated, MessageCallback, InputMedia, BotStarted
