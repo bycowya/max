@@ -6,7 +6,8 @@ from maxapi.types import MessageCreated, MessageCallback, InputMedia, BotStarted
 from maxapi.utils.inline_keyboard import InlineKeyboardBuilder
 from maxapi.types.attachments.buttons import CallbackButton
 
-bot = Bot(token="f9LHodD0cOImesTPXx55j74ZEmekxW66Y8xo0DZ4NSyNxvaNuZgpBb9Ng_ttcZskPuJ3HhxahHmHD8rH6uEf")
+bot = Bot(token=os.getenv("MAX_TOKEN"))
+#bot = Bot(token="f9LHodD0cOImesTPXx55j74ZEmekxW66Y8xo0DZ4NSyNxvaNuZgpBb9Ng_ttcZskPuJ3HhxahHmHD8rH6uEf")
 dp = Dispatcher()
 
 user_states = {}
@@ -63,8 +64,10 @@ def make_question_keyboard():
 
 def make_return_keyboard():
     keyboard = InlineKeyboardBuilder()
+    # Первый ряд: одна кнопка на всю ширину
+    keyboard.row(CallbackButton(text="Вернуться к вопросу", payload="return_quest"))
+    # Второй ряд: две кнопки рядом
     keyboard.row(
-        CallbackButton(text="Вернуться к вопросу", payload="return_quest"),
         CallbackButton(text="Пропустить", payload="skip_quest"),
         CallbackButton(text="Завершить", payload="finish_quest")
     )
@@ -170,7 +173,6 @@ async def hello_handler(event: MessageCreated):
         return
 
     welcome_text = (
-        "Привет! Я помогу тебе подготовиться к ЕГЭ по литературе. "
         "Привет! Я помогу тебе подготовиться к ЕГЭ по литературе. Я буду присылать кадры из известных отечественных экранизаций, а ты – отвечать на вопросы по тексту произведений. Кадр поможет вспомнить эпизод, но ответ всегда нужно искать в книге. Всего 15 вопросов, за каждый верный ответ – 1 балл. Начнем с романа-эпопеи Л.Н. Толстого «Война и мир» в экранизации С.Ф. Бондарчука"
     )
     await event.message.answer(
@@ -189,7 +191,7 @@ async def callback_handler(event: MessageCallback):
 
     if payload == "start_quest":
         user_states[user_id] = {"step": 0, "score": 0, "answered_wrong": False}
-        await event.answer(new_text="Поехали! Вопрос 1.")
+        #await event.answer(new_text="Поехали! Вопрос 1.")
         await send_question(event, user_id)
 
     elif payload == "finish_quest":
