@@ -8,7 +8,8 @@ from maxapi.utils.inline_keyboard import InlineKeyboardBuilder
 from maxapi.types.attachments.buttons import CallbackButton
 
 # Токен из переменной окружения
-bot = Bot(token=os.getenv("MAX_TOKEN"))
+#bot = Bot(token=os.getenv("MAX_TOKEN"))
+bot = Bot(token="f9LHodD0cOImesTPXx55j74ZEmekxW66Y8xo0DZ4NSyNxvaNuZgpBb9Ng_ttcZskPuJ3HhxahHmHD8rH6uEf")
 dp = Dispatcher()
 
 user_states = {}
@@ -63,13 +64,10 @@ def make_question_keyboard():
     )
     return keyboard.as_markup()
 
-# Кнопка возврата больше не нужна, но оставим функцию пустой на всякий случай
-def make_return_keyboard():
+# --- НОВАЯ КНОПКА "ДАЛЕЕ" ---
+def make_next_keyboard():
     keyboard = InlineKeyboardBuilder()
-    keyboard.row(
-        CallbackButton(text="Пропустить", payload="skip_quest"),
-        CallbackButton(text="Завершить", payload="finish_quest")
-    )
+    keyboard.row(CallbackButton(text="Далее", payload="next_quest"))
     return keyboard.as_markup()
 
 async def send_question(event, user_id):
@@ -158,11 +156,11 @@ async def hello_handler(event: MessageCreated):
         else:
             await event.message.answer(text=f"❌ Неверно. У вас {ballov(state['score'])}.")
         
-        # В любом случае показываем пояснение и идем дальше
-        await event.message.answer(text=q['hint'])
-        
-        state["step"] += 1
-        await send_question(event, user_id)
+        # Отправляем пояснение с кнопкой "Далее". Вопрос не меняем!
+        await event.message.answer(
+            text=q['hint'],
+            attachments=[make_next_keyboard()]
+        )
         return
 
     welcome_text = (
@@ -189,19 +187,28 @@ async def callback_handler(event: MessageCallback):
         await event.answer(new_text="Тест завершен.")
         await finish_quest_async(event, user_id)
 
+    # --- ОБРАБОТКА КНОПКИ "ДАЛЕЕ" ---
+    elif payload == "next_quest":
+        state = user_states.get(user_id)
+        if state:
+            state["step"] += 1
+            if state["step"] >= len(QUESTIONS):
+                await event.answer(new_text="Это был последний вопрос.")
+                await finish_quest_async(event, user_id)
+            else:
+                await event.answer(new_text="Следующий вопрос:")
+                await send_question(event, user_id)
+
     elif payload == "skip_quest":
         state = user_states.get(user_id)
         if state:
-            # При пропуске показываем пояснение, чтобы было честно
+            # При пропуске тоже показываем пояснение и кнопку "Далее"
             q = QUESTIONS[state["step"]]
             await event.answer(new_text="Вопрос пропущен.")
-            await event.message.answer(text=q['hint'])
-            
-            state["step"] += 1
-            if state["step"] >= len(QUESTIONS):
-                await finish_quest_async(event, user_id)
-            else:
-                await send_question(event, user_id)
+            await event.message.answer(
+                text=q['hint'],
+                attachments=[make_next_keyboard()]
+            )
 
 async def main():
     print("Бот запускается...")
