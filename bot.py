@@ -9,7 +9,7 @@ from maxapi.types.attachments.buttons import CallbackButton
 
 # Токен из переменной окружения
 #bot = Bot(token=os.getenv("MAX_TOKEN"))
-bot = Bot(token="f9LHodD0cOImesTPXx55j74ZEmekxW66Y8xo0DZ4NSyNxvaNuZgpBb9Ng_ttcZskPuJ3HhxahHmHD8rH6uEf")
+bot = Bot(token="")
 dp = Dispatcher()
 
 user_states = {}
